@@ -8,8 +8,8 @@ from torchmetrics import MetricCollection
 from torchmetrics.classification import F1Score, CohenKappa, MatthewsCorrCoef
 import lightning as L
 
-import sys, os
-
+from .__utils import Identity
+from .Classifier_module import ClassifierHead
 
 StageType = Literal["train", "val", "test"]
 
@@ -37,51 +37,21 @@ class DenseNet161Lightning(L.LightningModule):
         self.loss_fn = nn.CrossEntropyLoss()
 
         # Centralized metrics for all stages
-        # self.metrics: dict[StageType, dict[str, Any]] = {
-        #     stage: {
-        #         "f1": F1Score(
-        #             task="multiclass", num_classes=num_classes, average="macro"
-        #         ).to(self.device),
-        #         "qwk": CohenKappa(
-        #             task="multiclass", num_classes=num_classes, weights="quadratic"
-        #         ).to(self.device),
-        #         "mcc": MatthewsCorrCoef(task="multiclass", num_classes=num_classes).to(self.device),
-        #     }
-        #     for stage in ["train", "val", "test"]
-        # }
-        # self.metrics : Dict[(StageType, MetricCollection)] = {
-        #     stage: MetricCollection(
-        #         {
-        #             "f1": F1Score(
-        #                 task="multiclass", num_classes=num_classes, average="macro"
-        #             ),
-        #             "qwk": CohenKappa(
-        #                 task="multiclass",
-        #                 num_classes=num_classes,
-        #                 weights="quadratic",
-        #             ),
-        #             "mcc": MatthewsCorrCoef(task="multiclass", num_classes=num_classes),
-        #         },
-        #         prefix=f"{stage}_"
-        #     )
-        #     for stage in ["train", "val", "test"]
-        # }
-
         self.train_metrics = MetricCollection(
-                {
-                    "f1": F1Score(
-                        task="multiclass", num_classes=num_classes, average="macro"
-                    ),
-                    "qwk": CohenKappa(
-                        task="multiclass",
-                        num_classes=num_classes,
-                        weights="quadratic",
-                    ),
-                    "mcc": MatthewsCorrCoef(task="multiclass", num_classes=num_classes),
-                },
-                prefix="train_"
-            )
-        
+            {
+                "f1": F1Score(
+                    task="multiclass", num_classes=num_classes, average="macro"
+                ),
+                "qwk": CohenKappa(
+                    task="multiclass",
+                    num_classes=num_classes,
+                    weights="quadratic",
+                ),
+                "mcc": MatthewsCorrCoef(task="multiclass", num_classes=num_classes),
+            },
+            prefix="train_",
+        )
+
         self.val_metrics = self.train_metrics.clone(prefix="val_")
         self.test_metrics = self.train_metrics.clone(prefix="test_")
 
@@ -101,9 +71,9 @@ class DenseNet161Lightning(L.LightningModule):
         # sys.exit()
         # self.metrics[stage].update(preds_class, y)
 
-        if stage == 'train':
+        if stage == "train":
             self.train_metrics.update(preds_class, y)
-        elif stage == 'val':
+        elif stage == "val":
             self.val_metrics.update(preds_class, y)
         else:
             self.test_metrics.update(preds_class, y)
@@ -127,10 +97,10 @@ class DenseNet161Lightning(L.LightningModule):
         # self.log_dict(self.metrics[stage].compute(), prog_bar=True)
         # self.metrics[stage].reset()
 
-        if stage == 'train':
+        if stage == "train":
             self.log_dict(self.train_metrics.compute(), prog_bar=True)
             self.train_metrics.reset()
-        elif stage == 'val':
+        elif stage == "val":
             self.log_dict(self.val_metrics.compute(), prog_bar=True)
             self.val_metrics.reset()
         else:
@@ -148,3 +118,27 @@ class DenseNet161Lightning(L.LightningModule):
 
     def configure_optimizers(self) -> torch.optim.Optimizer:
         return torch.optim.Adam(self.parameters(), lr=self.hparams.lr)
+
+
+class DenseNet161(nn.Module):
+    def __init__(
+        self, num_classes: int, transfer: bool = True, activation: str = "relu"
+    ):
+        super(DenseNet161, self).__init__()
+        self.activation = activation
+        self.weight = models.DenseNet161_Weights.IMAGENET1K_V1
+        self.model = models.densenet161(weights=self.weight)
+        if transfer:
+            for param in self.model.parameters():
+                param.requires_grad = False
+
+        self.model.classifier = Identity()
+        # self.head = ClassifierHead(
+        #     2208, num_classes, [1028, 512, 512, 256, 64], activation=self.activation
+        # )
+        self.head = ClassifierHead(2208, num_classes, [64], activation=self.activation)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        output = self.model(x)
+        output = self.head(output)
+        return output
