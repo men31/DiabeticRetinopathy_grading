@@ -4,6 +4,7 @@ from dr_grading.models import DenseNet161Lightning, DenseNet161, LightningModelW
 import lightning as L
 import torch
 from lightning.pytorch.callbacks import ModelCheckpoint
+from lightning.pytorch.loggers import TensorBoardLogger
 from torchmetrics import MetricCollection, F1Score, CohenKappa, MatthewsCorrCoef
 
 torch.set_float32_matmul_precision("medium")
@@ -32,20 +33,49 @@ def main():
         )
 
     # Load model
-    model = DenseNet161(num_classes=num_classes)
+    model = DenseNet161(num_classes=num_classes, transfer=False)
     model = LightningModelWrapper(model, metrics)
-    # model = DenseNet161Lightning(num_classes=10)
+    
+    # logger
+    tb_logger = TensorBoardLogger("logs", name="my_model")
+
+    # Directory for checkpoints (reuse logger path)
+    ckpt_dir = tb_logger.log_dir + "/checkpoints"
+    
+    # Define callbacks
+    # Save best model based on validation F1
+    best_ckpt = ModelCheckpoint(
+        monitor="val_f1",
+        mode="max",
+        save_top_k=2,
+        filename="best-{val_f1:.4f}-{epoch:03d}",
+        dirpath= ckpt_dir + "/best/"
+    )
+
+    # Save checkpoint every 2 epochs
+    periodic_ckpt = ModelCheckpoint(
+        every_n_epochs=3,
+        save_top_k=-1,  # Save all
+        filename="{epoch:03d}",
+        dirpath= ckpt_dir + "/periodic/"
+    )
 
     # Trainer
     trainer = L.Trainer(
-        max_epochs=10,
+        max_epochs=20,
         accelerator="gpu",
         precision="16-mixed",
-        callbacks=[ModelCheckpoint(save_top_k=2, monitor="val_f1", mode="max")],
-    )
+        # callbacks=[ModelCheckpoint(save_top_k=2, monitor="val_f1", mode="max")],
+        callbacks=[best_ckpt, periodic_ckpt],
+        logger=tb_logger,
+        enable_model_summary=True,
+        )
 
     # Train and test
-    trainer.fit(model, datamodule=stl_dm)
+    trainer.fit(model, 
+                datamodule=stl_dm,
+                # ckpt_path=r"checkpoints\periodic\epoch_epoch=011.ckpt",
+                )
     trainer.test(model, datamodule=stl_dm)
 
 

@@ -3,7 +3,7 @@ import importlib as _importlib
 from .LightningModelWrapper import LightningModelWrapper
 
 from .Classifier_module import ClassifierHead, ClassiferHead_MoE
-from .DenseNet_module import DenseNet161Lightning, DenseNet161
+from .DenseNet_module import DenseNet161Lightning, DenseNet161, DenseNet161_MoE
 from .Swin_module import Swin_S
 from .VGG_module import VGG19
 from .ResNet_module import ResNet50
@@ -16,6 +16,7 @@ _functions = [
     "ClassifierHead",
     "ClassiferHead_MoE",
     "DenseNet161",
+    "DenseNet161_MoE",
     "Swin_S",
     "VGG19",
     "ResNet50",

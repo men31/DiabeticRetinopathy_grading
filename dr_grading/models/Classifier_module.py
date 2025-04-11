@@ -3,7 +3,7 @@ import torch
 from typing import Optional, Union, Sequence, List, Dict, Any
 
 from .__utils import View
-from .Attention_module import Encoder_MoE_Attention_Block
+from .MoE_module import Encoder_MoE_Attention_Block
 
 
 class ClassifierHead(nn.Module):
