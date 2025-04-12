@@ -1,14 +1,20 @@
 import importlib as _importlib
 
 from .STL10 import STL10DataModule
+from .GenericDataset import GenericImageDataModule
 
 _submodules = []
 
-_functions = [
-    "STL10DataModule",
+_functions =[
+
 ]
 
-__all__ = _submodules + _functions
+_lightning_functions = [
+    "STL10DataModule",
+    "GenericImageDataModule"
+]
+
+__all__ = _submodules + _functions + _lightning_functions
 
 
 def __dir__():

@@ -95,6 +95,7 @@ class GenericImageDataModule(L.LightningDataModule):
             shuffle=True,
             num_workers=self.num_workers,
             pin_memory=True,
+            persistent_workers=True,
         )
 
     def val_dataloader(self) -> DataLoader:
@@ -104,6 +105,7 @@ class GenericImageDataModule(L.LightningDataModule):
             shuffle=False,
             num_workers=self.num_workers,
             pin_memory=True,
+            persistent_workers=True,
         )
 
     def test_dataloader(self) -> DataLoader:
@@ -113,4 +115,5 @@ class GenericImageDataModule(L.LightningDataModule):
             shuffle=False,
             num_workers=self.num_workers,
             pin_memory=True,
+            persistent_workers=True,
         )
