@@ -13,6 +13,8 @@ class STL10DataModule(L.LightningDataModule):
         num_workers: int = 4,
         val_split: float = 0.2,
         image_size: int = 224,
+        train_transform : Optional[T.Compose] = None,
+        test_transform : Optional[T.Compose] = None,
     ) -> None:
         super().__init__()
         self.data_dir = data_dir
@@ -26,16 +28,24 @@ class STL10DataModule(L.LightningDataModule):
         self.test_dataset: Optional[torch.utils.data.Dataset] = None
 
         # Define transformations
-        self.train_transform = T.Compose([
-            T.Resize((image_size, image_size)),
-            T.RandomHorizontalFlip(),
-            T.ToTensor(),
-        ])
+        if train_transform is None:
+            self.train_transform = T.Compose([
+                T.Resize((image_size, image_size)),
+                T.RandomHorizontalFlip(),
+                T.ToTensor(),
+            ])
+        else:
+            print("Use custom transform")
+            self.train_transform = train_transform
 
-        self.test_transform = T.Compose([
-            T.Resize((image_size, image_size)),
-            T.ToTensor(),
-        ])
+        if test_transform is None:     
+            self.test_transform = T.Compose([
+                T.Resize((image_size, image_size)),
+                T.ToTensor(),
+            ])
+        else:
+            print("Use custom transform")
+            self.test_transform = test_transform
 
     def prepare_data(self) -> None:
         # Download STL10 if necessary

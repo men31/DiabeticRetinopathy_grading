@@ -9,6 +9,9 @@ from .VGG_module import VGG19
 from .ResNet_module import ResNet50
 from .Inception_module import Inception_V3
 from .ViT_module import ViT16
+from .Encoder_module import ConvEncoder
+from .Unet_module import UNet
+from .__utils import load_state_from_ckpt
 
 _submodules = []
 
@@ -21,7 +24,9 @@ _functions = [
     "VGG19",
     "ResNet50",
     "Inception_V3",
-    "ViT16"
+    "ViT16",
+    "ConvEncoder",
+    "load_state_from_ckpt",
 ]
 
 _lighning_functions = [

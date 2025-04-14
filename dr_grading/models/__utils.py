@@ -60,3 +60,9 @@ class View(nn.Module):
         elif type(self.shape) == int:
             shape = (batch_size, self.shape)
         out = input.v
+
+
+def load_state_from_ckpt(model: nn.Module, ckpt_dir:str):
+    ckpt_dict = torch.load(ckpt_dir)
+    model.load_state_dict(ckpt_dict['state_dict'])
+    return model

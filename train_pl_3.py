@@ -14,6 +14,7 @@ from torchmetrics import MetricCollection, F1Score, CohenKappa, MatthewsCorrCoef
 torch.set_float32_matmul_precision("medium")
 StageType = Literal["train", "val", "test"]
 
+
 def set_logger_callbacks(logger_name: str = "logs", model_name: str = "my_model"):
     # logger
     tb_logger = TensorBoardLogger(logger_name, name=model_name)
@@ -60,7 +61,7 @@ def get_transform(stage: StageType, image_size: int = 224) -> v2.Compose:
                 v2.RandomHorizontalFlip(),
                 FourierTransform(shift=True, return_abs=True),
                 v2.ToDtype(
-                    torch.float32, 
+                    torch.float32,
                     # scale=True
                 ),  # Converts and normalizes to [0, 1]
             ]
@@ -72,7 +73,7 @@ def get_transform(stage: StageType, image_size: int = 224) -> v2.Compose:
                 v2.Resize((image_size, image_size)),
                 FourierTransform(shift=True, return_abs=True),
                 v2.ToDtype(
-                    torch.float32, 
+                    torch.float32,
                     # scale=True
                 ),  # Converts and normalizes to [0, 1]
             ]
@@ -86,14 +87,16 @@ def main():
     test_transform = get_transform("test")
 
     # Instantiate datamodule
-    data_dir = r"D:\Aj_Aof_Work\OCT_Disease\DATASET\APTOS2019_V4"
-    datamodule = GenericImageDataModule(
-        data_dir=data_dir, 
-        batch_size=32, 
-        num_workers=8,
-        train_transform=train_transform,
-        test_transform=test_transform,
-        )
+    # data_dir = r"D:\Aj_Aof_Work\OCT_Disease\DATASET\APTOS2019_V4"
+    # datamodule = GenericImageDataModule(
+    #     data_dir=data_dir,
+    #     batch_size=32,
+    #     num_workers=8,
+    #     train_transform=train_transform,
+    #     test_transform=test_transform,
+    # )
+    datamodule = STL10DataModule(data_dir="./data", batch_size=32, 
+                                 train_transform=train_transform, test_transform=test_transform)
 
     # Metrics
     metrics = MetricCollection(
@@ -114,7 +117,9 @@ def main():
     model = LightningModelWrapper(model, metrics)
 
     # Get logger and callbacks
-    tb_logger, callbacks = set_logger_callbacks(logger_name="aptos2019_logs", model_name="DenseNet161")
+    tb_logger, callbacks = set_logger_callbacks(
+        logger_name="aptos2019_logs", model_name="DenseNet161"
+    )
 
     # Trainer
     trainer = L.Trainer(

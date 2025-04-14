@@ -10,6 +10,8 @@ import lightning as L
 
 from .__utils import Identity
 from .Classifier_module import ClassifierHead, ClassiferHead_MoE
+from .Encoder_module import ConvEncoder
+from .Unet_module import UNet
 
 StageType = Literal["train", "val", "test"]
 
@@ -122,25 +124,55 @@ class DenseNet161Lightning(L.LightningModule):
 
 class DenseNet161(nn.Module):
     def __init__(
-        self, num_classes: int, transfer: bool = True, activation: str = "relu"
+        self, num_classes: int, transfer: bool = True, activation: str = "relu", 
+        in_channels:int=3, encoder_model:Literal['simple', 'unet']="unet",
     ):
         super(DenseNet161, self).__init__()
+        self.transfer = transfer
+        self.num_classes = num_classes
         self.activation = activation
+        self.in_channels = in_channels
+        self.encoder_model = encoder_model
+        self.hidden_layers = [1028, 512, 512, 256, 64]
         self.weight = models.DenseNet161_Weights.IMAGENET1K_V1
-        self.model = models.densenet161(weights=self.weight)
-        if transfer:
-            for param in self.model.parameters():
-                param.requires_grad = False
+        self.model = self.__create_architecture()
+        # self.model = models.densenet161(weights=self.weight)
+        # if transfer:
+        #     for param in self.model.parameters():
+        #         param.requires_grad = False
 
-        self.model.classifier = Identity()
+        # self.model.classifier = Identity()
         # self.head = ClassifierHead(
         #     2208, num_classes, [1028, 512, 512, 256, 64], activation=self.activation
         # )
-        self.head = ClassifierHead(2208, num_classes, [64], activation=self.activation)
+        # self.head = ClassifierHead(2208, num_classes, self.hidden_layers, activation=self.activation)
+
+    def __create_architecture(self):
+        model_lst = []
+        if self.in_channels != 3:
+            if self.encoder_model == "simple":
+                enc_rgb = ConvEncoder(in_channels=self.in_channels, out_channels=3)
+            elif self.encoder_model == "unet":
+                enc_rgb = UNet(in_channels=self.in_channels, out_channels=3, features=(64, 128), dropout=0.3)
+            else:
+                raise ValueError(f"[-] Not found encoder model: {self.encoder_model}")
+            model_lst.append(enc_rgb)
+
+        model = models.densenet161(weights=self.weight)
+        if self.transfer:
+            for param in model.parameters():
+                param.requires_grad = False
+        model.classifier = Identity()
+        model_lst.append(model)
+
+        head = ClassifierHead(2208, self.num_classes, self.hidden_layers, activation=self.activation)
+        model_lst.append(head)
+
+        return nn.Sequential(*model_lst)
+        
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         output = self.model(x)
-        output = self.head(output)
         return output
 
 
