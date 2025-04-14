@@ -4,7 +4,7 @@ from .LightningModelWrapper import LightningModelWrapper
 
 from .Classifier_module import ClassifierHead, ClassiferHead_MoE
 from .DenseNet_module import DenseNet161Lightning, DenseNet161, DenseNet161_MoE
-from .Swin_module import Swin_S
+from .Swin_module import Swin_S, Swin_V2_B
 from .VGG_module import VGG19
 from .ResNet_module import ResNet50
 from .Inception_module import Inception_V3
@@ -21,6 +21,7 @@ _functions = [
     "DenseNet161",
     "DenseNet161_MoE",
     "Swin_S",
+    "Swin_V2_B",
     "VGG19",
     "ResNet50",
     "Inception_V3",
