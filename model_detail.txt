@@ -1,0 +1,7 @@
+Swin_V2_S:
+    Baseline, 500 epochs: version 3 - 4
+    On SMOTE data, 500 epochs : version 0 - 1
+    Imbalance sampler, 500 epochs: version 5
+    SMOTE, FFT abs, 500 epochs : version 
+
+

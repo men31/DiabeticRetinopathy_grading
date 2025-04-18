@@ -131,6 +131,7 @@ class LightningModelWrapper(L.LightningModule):
         # Scheduler
         if scheduler is None:
             self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=10, gamma=0.1)
+            # self.scheduler = torch.optim.lr_scheduler.CyclicLR(self.optimizer, base_lr=1e-3, max_lr=1e-2, step_size_up=5, step_size_down=5, mode="exp_range", gamma=0.1)
         else:
             self.scheduler = scheduler
 

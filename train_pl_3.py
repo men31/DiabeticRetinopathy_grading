@@ -1,7 +1,12 @@
 from typing import Literal
 
 from dr_grading.datasets import STL10DataModule, GenericImageDataModule
-from dr_grading.models import DenseNet161Lightning, DenseNet161, LightningModelWrapper
+from dr_grading.models import (DenseNet161Lightning, 
+                               DenseNet161, 
+                               Swin_V2_B,
+                               Swin_V2_S,
+                               LightningModelWrapper, 
+                               load_state_from_ckpt)
 from dr_grading.preprocessing import FourierTransform
 
 import lightning as L
@@ -13,7 +18,6 @@ from torchmetrics import MetricCollection, F1Score, CohenKappa, MatthewsCorrCoef
 
 torch.set_float32_matmul_precision("medium")
 StageType = Literal["train", "val", "test"]
-
 
 def set_logger_callbacks(logger_name: str = "logs", model_name: str = "my_model"):
     # logger
@@ -43,7 +47,7 @@ def set_logger_callbacks(logger_name: str = "logs", model_name: str = "my_model"
 
     # Save checkpoint every 2 epochs
     periodic_ckpt = ModelCheckpoint(
-        every_n_epochs=3,
+        every_n_epochs=5,
         save_top_k=-1,  # Save all
         filename="{epoch:03d}",
         dirpath=ckpt_dir + "/periodic/",
@@ -59,10 +63,16 @@ def get_transform(stage: StageType, image_size: int = 224) -> v2.Compose:
                 v2.ToImage(),
                 v2.Resize((image_size, image_size)),
                 v2.RandomHorizontalFlip(),
-                FourierTransform(shift=True, return_abs=True),
+                # FourierTransform(shift=True, return_abs=True),
+                v2.RandomApply(torch.nn.ModuleList([
+                    v2.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
+                    v2.GaussianBlur(kernel_size=5, sigma=(0.1, 2.0)),
+                ]), p=0.3),
+                v2.RandomAdjustSharpness(2, p=0.4),
+                v2.RandomAutocontrast(p=0.4),
                 v2.ToDtype(
-                    torch.float32,
-                    # scale=True
+                    torch.float32, 
+                    scale=True
                 ),  # Converts and normalizes to [0, 1]
             ]
         )
@@ -71,32 +81,31 @@ def get_transform(stage: StageType, image_size: int = 224) -> v2.Compose:
             [
                 v2.ToImage(),
                 v2.Resize((image_size, image_size)),
-                FourierTransform(shift=True, return_abs=True),
+                # FourierTransform(shift=True, return_abs=True),
                 v2.ToDtype(
-                    torch.float32,
-                    # scale=True
+                    torch.float32, 
+                    scale=True
                 ),  # Converts and normalizes to [0, 1]
             ]
         )
 
 
 def main():
-    num_classes = 10
+    num_classes = 5
     # Get transform
-    train_transform = get_transform("train")
-    test_transform = get_transform("test")
+    train_transform = get_transform("train", image_size=512)
+    test_transform = get_transform("test", image_size=512)
 
     # Instantiate datamodule
-    # data_dir = r"D:\Aj_Aof_Work\OCT_Disease\DATASET\APTOS2019_V4"
-    # datamodule = GenericImageDataModule(
-    #     data_dir=data_dir,
-    #     batch_size=32,
-    #     num_workers=8,
-    #     train_transform=train_transform,
-    #     test_transform=test_transform,
-    # )
-    datamodule = STL10DataModule(data_dir="./data", batch_size=32, 
-                                 train_transform=train_transform, test_transform=test_transform)
+    data_dir = r"D:\Aj_Aof_Work\OCT_Disease\DATASET\APTOS2019_V4"
+    datamodule = GenericImageDataModule(
+        data_dir=data_dir, 
+        batch_size=8, 
+        num_workers=8,
+        train_transform=train_transform,
+        test_transform=test_transform,
+        use_imbalance_sampler=True,
+        )
 
     # Metrics
     metrics = MetricCollection(
@@ -113,17 +122,21 @@ def main():
     )
 
     # Load model
-    model = DenseNet161(num_classes=num_classes, transfer=False)
+    # model = DenseNet161(num_classes=num_classes, transfer=False)
+    model = Swin_V2_S(num_classes=num_classes, transfer=True)
     model = LightningModelWrapper(model, metrics)
 
+    # Load checkpoint
+    # ckpt_dir = r"aptos2019_logs\SWIN_V2_S\version_1\checkpoints\lowest_loss\lowest-val_loss=0.5442-epoch=396.ckpt"
+    # model = load_state_from_ckpt(model, ckpt_dir)
+
+
     # Get logger and callbacks
-    tb_logger, callbacks = set_logger_callbacks(
-        logger_name="aptos2019_logs", model_name="DenseNet161"
-    )
+    tb_logger, callbacks = set_logger_callbacks(logger_name="aptos2019_logs", model_name="SWIN_V2_S")
 
     # Trainer
     trainer = L.Trainer(
-        max_epochs=20,
+        max_epochs=500,
         accelerator="gpu",
         precision="16-mixed",
         callbacks=callbacks,
@@ -135,7 +148,7 @@ def main():
     trainer.fit(
         model,
         datamodule=datamodule,
-        # ckpt_path=r"checkpoints\periodic\epoch_epoch=011.ckpt",
+        # ckpt_path=r"aptos2019_logs\SWIN_V2_S\version_3\checkpoints\periodic\epoch=229.ckpt",
     )
     trainer.test(model, datamodule=datamodule, ckpt_path="best")
 

@@ -24,6 +24,7 @@ from torch.utils.data import DataLoader
 from torchvision.datasets import ImageFolder
 import torchvision.transforms.v2 as T
 import lightning as L
+from torchsampler import ImbalancedDatasetSampler
 
 
 class GenericImageDataModule(L.LightningDataModule):
@@ -35,12 +36,14 @@ class GenericImageDataModule(L.LightningDataModule):
         num_workers: int = 4,
         train_transform: Optional[T.Compose] = None,
         test_transform: Optional[T.Compose] = None,
+        use_imbalance_sampler: bool = False,
     ) -> None:
         super().__init__()
         self.data_dir = Path(data_dir)
         self.image_size = image_size
         self.batch_size = batch_size
         self.num_workers = num_workers
+        self.use_imbalance_sampler = use_imbalance_sampler
 
         self.train_dataset: Optional[ImageFolder] = None
         self.val_dataset: Optional[ImageFolder] = None
@@ -89,14 +92,24 @@ class GenericImageDataModule(L.LightningDataModule):
             )
 
     def train_dataloader(self) -> DataLoader:
-        return DataLoader(
-            self.train_dataset,
-            batch_size=self.batch_size,
-            shuffle=True,
-            num_workers=self.num_workers,
-            pin_memory=True,
-            persistent_workers=True,
-        )
+        if self.use_imbalance_sampler:
+            return DataLoader(
+                self.train_dataset,
+                batch_size=self.batch_size,
+                sampler=ImbalancedDatasetSampler(self.train_dataset),
+                num_workers=self.num_workers,
+                pin_memory=True,
+                persistent_workers=True,
+            )
+        else:
+            return DataLoader(
+                self.train_dataset,
+                batch_size=self.batch_size,
+                shuffle=True,
+                num_workers=self.num_workers,
+                pin_memory=True,
+                persistent_workers=True,
+            )
 
     def val_dataloader(self) -> DataLoader:
         return DataLoader(

@@ -63,6 +63,7 @@ class View(nn.Module):
 
 
 def load_state_from_ckpt(model: nn.Module, ckpt_dir:str):
+    print(f"Loading checkpoint from {ckpt_dir}")
     ckpt_dict = torch.load(ckpt_dir)
     model.load_state_dict(ckpt_dict['state_dict'])
     return model
