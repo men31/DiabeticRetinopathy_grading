@@ -30,3 +30,22 @@ class InverseFourierTransform(v2.Transform):
             x = torch.fft.ifftshift(inpt)
         x = torch.fft.ifft2(x)
         return x.real if self.return_real else x
+
+
+class FFT2Image(v2.Transform):
+    def __init__(self):
+        super().__init__()
+
+    def transform(self, inpt, params) -> torch.Tensor:
+        img_abs = inpt.abs()
+        if torch.is_complex(inpt):
+            img_angle = inpt.angle()
+            img = (
+                torch.concat([img_abs, img_angle], dim=1)
+                if inpt.dim() == 4
+                else torch.concat([img_abs, img_angle], dim=0)
+            )
+        else:
+            img = img_abs
+
+        return img
