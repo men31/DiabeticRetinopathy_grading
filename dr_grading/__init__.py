@@ -3,6 +3,7 @@ import importlib as _importlib
 _submodules = [
     "datasets",
     "models",
+    "ML",
 ]
 
 _functions = [

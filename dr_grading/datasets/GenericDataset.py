@@ -44,6 +44,7 @@ class GenericImageDataModule(L.LightningDataModule):
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.use_imbalance_sampler = use_imbalance_sampler
+        self.is_setup = False
 
         self.train_dataset: Optional[ImageFolder] = None
         self.val_dataset: Optional[ImageFolder] = None
@@ -78,6 +79,7 @@ class GenericImageDataModule(L.LightningDataModule):
         pass  # No download logic required for ImageFolder datasets
 
     def setup(self, stage: Optional[str] = None) -> None:
+        
         if stage in (None, "fit"):
             self.train_dataset = ImageFolder(
                 self.data_dir / "train", transform=self.train_transform
@@ -90,6 +92,14 @@ class GenericImageDataModule(L.LightningDataModule):
             self.test_dataset = ImageFolder(
                 self.data_dir / "test", transform=self.test_transform
             )
+        
+        if stage == "predict":
+            if self.test_dataset is None:
+                self.test_dataset = ImageFolder(
+                    self.data_dir / "test", transform=self.test_transform
+                )
+        
+        self.is_setup = True
 
     def train_dataloader(self) -> DataLoader:
         if self.use_imbalance_sampler:
@@ -122,6 +132,16 @@ class GenericImageDataModule(L.LightningDataModule):
         )
 
     def test_dataloader(self) -> DataLoader:
+        return DataLoader(
+            self.test_dataset,
+            batch_size=self.batch_size,
+            shuffle=False,
+            num_workers=self.num_workers,
+            pin_memory=True,
+            persistent_workers=True,
+        )
+    
+    def predict_dataloader(self) -> DataLoader:
         return DataLoader(
             self.test_dataset,
             batch_size=self.batch_size,
